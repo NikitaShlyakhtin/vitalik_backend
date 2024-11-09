@@ -7,6 +7,6 @@ import (
 )
 
 func TestValidateApp(t *testing.T) {
-	err := fx.ValidateApp(getFxOptions())
+	err := fx.ValidateApp(buildFxOptions())
 	require.NoError(t, err)
 }

@@ -25,7 +25,7 @@ func requestLogger(logger *zap.SugaredLogger) echo.MiddlewareFunc {
 					"remote_ip", v.RemoteIP,
 				)
 			} else {
-				logger.Infow("REQUEST_ERROR",
+				logger.Errorw("REQUEST_ERROR",
 					"method", v.Method,
 					"uri", v.URI,
 					"status", v.Status,
