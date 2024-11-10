@@ -14,4 +14,6 @@ type IStore interface {
 
 	ListTransactions(ctx context.Context, args store_types.ListTransactionsArgs) ([]*types.Transaction, error)
 	Transfer(ctx context.Context, args store_types.TransferArgs) (*types.Transaction, error)
+
+	SaveOrder(ctx context.Context, order types.Order) error
 }

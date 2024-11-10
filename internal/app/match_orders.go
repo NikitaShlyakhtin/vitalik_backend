@@ -10,7 +10,7 @@ func (app *Application) MatchOrders() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		ctx := c.Request().Context()
 
-		err := app.OrderBook.MatchOrders(ctx)
+		err := app.OrderBookManager.MatchOrders(ctx)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"message": fmt.Sprintf("failed to match orders: %v", err),

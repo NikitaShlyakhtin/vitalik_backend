@@ -24,8 +24,9 @@ type CreateOrderArgs struct {
 }
 
 type ListOrdersArgs struct {
-	UserID      null.String
+	CurrencyPair types.CurrencyPair
+
+	UserIDIn    []string
 	OrderType   null.Value[types.OrderType]
 	OrderStatus null.Value[types.OrderStatus]
-	Currency    null.Value[types.Currency]
 }

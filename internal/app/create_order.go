@@ -44,7 +44,7 @@ func (app *Application) CreateOrder() echo.HandlerFunc {
 			UpdatedAt:      time.Now(),
 		}
 
-		order, err := app.OrderBook.CreateOrder(ctx, args)
+		order, err := app.OrderBookManager.CreateOrder(ctx, args)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"message": err.Error()})
 		}

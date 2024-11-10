@@ -20,6 +20,7 @@ var (
 type Store struct {
 	wallets      map[string]*types.Wallet
 	transactions []*types.Transaction
+	orders       []*types.Order
 }
 
 func NewStore() *Store {
@@ -56,8 +57,15 @@ func (s *Store) ListWallets(ctx context.Context, args store_types.ListWalletsArg
 		Address := wallet.Requisites.Address
 		userID := wallet.Requisites.UserID
 
-		return lo.Contains(args.AddresssIn, Address) ||
-			lo.Contains(args.UserIDsIn, userID)
+		if len(args.UserIDsIn) > 0 && !lo.Contains(args.UserIDsIn, userID) {
+			return false
+		}
+
+		if len(args.AddresssIn) > 0 && !lo.Contains(args.AddresssIn, Address) {
+			return false
+		}
+
+		return true
 	}), nil
 }
 
@@ -171,4 +179,10 @@ func (s *Store) Transfer(ctx context.Context, args store_types.TransferArgs) (*t
 	s.transactions = append(s.transactions, tx)
 
 	return tx, nil
+}
+
+func (s *Store) SaveOrder(ctx context.Context, order types.Order) error {
+	s.orders = append(s.orders, &order)
+
+	return nil
 }
