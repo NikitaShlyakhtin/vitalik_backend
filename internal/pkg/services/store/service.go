@@ -42,7 +42,7 @@ func (s *Store) CreateWallet(ctx context.Context, wallet types.Wallet) error {
 		},
 		Amount:    wallet.Balance,
 		Currency:  wallet.Currency,
-		Purpose:   null.StringFrom("wallet creation"),
+		Purpose:   null.StringFrom("Opening new wallet"),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -95,7 +95,7 @@ func (s *Store) Deposit(ctx context.Context, args store_types.DepositArgs) (*typ
 		},
 		Amount:    args.Amount,
 		Currency:  args.Currency,
-		Purpose:   null.StringFrom("deposit from external wallet"),
+		Purpose:   null.StringFrom("Deposit from external wallet"),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}

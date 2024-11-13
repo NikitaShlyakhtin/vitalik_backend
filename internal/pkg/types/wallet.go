@@ -3,7 +3,7 @@ package types
 import "time"
 
 type Wallet struct {
-	Requisites Requisites
+	Requisites Requisites `json:"requisites"`
 
 	Currency Currency `json:"currency"`
 	Balance  float64  `json:"balance"`

@@ -7,12 +7,13 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"regexp"
+	"sort"
 	store_types "vitalik_backend/internal/pkg/services/store/types"
 )
 
 type ListTransactionsRequest struct {
-	AddresssIn []string `json:"addresss_in"`
-	UserIDsIn  []string `json:"user_ids_in"`
+	AddresssIn []string `json:"address_in"`
+	UserIdIn   []string `json:"user_id_in"`
 }
 
 func (app *Application) ListTransactions() echo.HandlerFunc {
@@ -39,13 +40,17 @@ func (app *Application) ListTransactions() echo.HandlerFunc {
 			})
 		}
 
+		sort.Slice(transactions, func(i, j int) bool {
+			return transactions[i].CreatedAt.After(transactions[j].CreatedAt)
+		})
+
 		return c.JSON(http.StatusOK, transactions)
 	}
 }
 
 func (app *Application) validateListTransactionsRequest(ctx context.Context, req *ListTransactionsRequest) (int, error) {
 	if len(req.AddresssIn) == 0 &&
-		len(req.UserIDsIn) == 0 {
+		len(req.UserIdIn) == 0 {
 		return http.StatusBadRequest, fmt.Errorf("address or user_id must be provided")
 	}
 
@@ -60,8 +65,8 @@ func (app *Application) validateListTransactionsRequest(ctx context.Context, req
 		}
 	}
 
-	if len(req.UserIDsIn) > 0 {
-		for _, userID := range req.UserIDsIn {
+	if len(req.UserIdIn) > 0 {
+		for _, userID := range req.UserIdIn {
 			if len(userID) == 0 {
 				return http.StatusBadRequest, fmt.Errorf("user_id must must be non-empty")
 			}
@@ -74,6 +79,6 @@ func (app *Application) validateListTransactionsRequest(ctx context.Context, req
 func bindListTransactionsArgs(req *ListTransactionsRequest) store_types.ListTransactionsArgs {
 	return store_types.ListTransactionsArgs{
 		AddresssIn: req.AddresssIn,
-		UserIDsIn:  req.AddresssIn,
+		UserIDsIn:  req.UserIdIn,
 	}
 }

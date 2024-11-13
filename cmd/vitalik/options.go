@@ -6,6 +6,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
+	"vitalik_backend/internal/pkg/services/matcher"
 	"vitalik_backend/internal/server"
 )
 
@@ -22,6 +23,18 @@ func startServer(lc fx.Lifecycle, s *server.Server, l *zap.Logger) {
 		},
 		OnStop: func(ctx context.Context) error {
 			return s.Shutdown(ctx)
+		},
+	})
+}
+
+func startMatcher(m *matcher.Matcher, lc fx.Lifecycle) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go m.Start(ctx)
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			return nil
 		},
 	})
 }

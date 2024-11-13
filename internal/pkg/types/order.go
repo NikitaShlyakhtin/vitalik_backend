@@ -30,7 +30,7 @@ type Order struct {
 	SellQuantity   null.Float `json:"sell_quantity"`
 	SellRequisites Requisites `json:"sell_requisites"`
 
-	Price float64
+	Price float64 `json:"price"`
 
 	BuyCurrency   Currency   `json:"buy_currency"`
 	BuyQuantity   null.Float `json:"buy_quantity"`

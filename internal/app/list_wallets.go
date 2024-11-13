@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"regexp"
+	"sort"
 	"vitalik_backend/internal/pkg/services/store"
 	store_types "vitalik_backend/internal/pkg/services/store/types"
 )
@@ -23,6 +24,10 @@ func (app *Application) ListWallets() echo.HandlerFunc {
 		var req *listWalletsRequest
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"message": err.Error()})
+		}
+
+		if req == nil {
+			req = &listWalletsRequest{}
 		}
 
 		if code, err := app.validateListWalletsRequest(ctx, req); err != nil {
@@ -43,16 +48,15 @@ func (app *Application) ListWallets() echo.HandlerFunc {
 			})
 		}
 
+		sort.Slice(wallets, func(i, j int) bool {
+			return wallets[i].UpdatedAt.After(wallets[j].UpdatedAt)
+		})
+
 		return c.JSON(http.StatusOK, wallets)
 	}
 }
 
 func (app *Application) validateListWalletsRequest(ctx context.Context, req *listWalletsRequest) (int, error) {
-	if req.AddresssIn == nil &&
-		req.UserIDsIn == nil {
-		return http.StatusBadRequest, fmt.Errorf("either address or user_id must be provided")
-	}
-
 	if req.AddresssIn != nil {
 		for _, key := range req.AddresssIn {
 			matched, err := regexp.MatchString("^[0-9a-fA-F]{64}$", key)

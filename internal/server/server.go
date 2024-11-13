@@ -50,21 +50,27 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) setupMiddleware() {
 	s.echo.Use(requestLogger(s.logger))
 	s.echo.Use(middleware.Recover())
+
+	s.echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS},
+		AllowHeaders: []string{"Content-Type", "Authorization"},
+	}))
 }
 
 func (s *Server) setupRoutes() {
 	s.echo.GET("/healthCheck", s.handler.HealthCheck())
 
 	s.echo.POST("/wallets/create", s.handler.CreateWallet())
-	s.echo.GET("/wallets", s.handler.ListWallets())
+	s.echo.POST("/wallets", s.handler.ListWallets())
 	s.echo.PUT("/wallets/deposit", s.handler.Deposit())
 
 	s.echo.POST("/transfer", s.handler.Transfer())
 
-	s.echo.GET("/transactions", s.handler.ListTransactions())
+	s.echo.POST("/transactions", s.handler.ListTransactions())
 
 	s.echo.POST("/orders/create", s.handler.CreateOrder())
 	s.echo.DELETE("/orders", s.handler.CancelOrder())
-	s.echo.GET("/orders", s.handler.ListOrders())
+	s.echo.POST("/orders", s.handler.ListOrders())
 	s.echo.POST("/orders/match", s.handler.MatchOrders())
 }

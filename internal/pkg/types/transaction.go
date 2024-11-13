@@ -8,8 +8,8 @@ import (
 type Transaction struct {
 	ID string `json:"id,omitempty"`
 
-	SenderRequisites   Requisites
-	ReceiverRequisites Requisites
+	SenderRequisites   Requisites `json:"sender_requisites,omitempty"`
+	ReceiverRequisites Requisites `json:"receiver_requisites,omitempty"`
 
 	Amount   float64  `json:"amount,omitempty"`
 	Currency Currency `json:"currency,omitempty"`

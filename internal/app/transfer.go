@@ -90,6 +90,6 @@ func bindTransferArgs(req *transferRequest) store_types.TransferArgs {
 		ToAddress:   req.ToAddress,
 		Amount:      req.Amount,
 		Currency:    req.Currency,
-		Purpose:     null.StringFrom("internal transfer between wallets"),
+		Purpose:     null.StringFrom("Internal transfer between exchange wallets"),
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"go.uber.org/zap"
 	"vitalik_backend/internal/app"
 	"vitalik_backend/internal/dependencies"
+	"vitalik_backend/internal/pkg/services/matcher"
 	"vitalik_backend/internal/pkg/services/order_book_manager"
 	"vitalik_backend/internal/pkg/services/store"
 	"vitalik_backend/internal/pkg/services/wallet_service"
@@ -28,7 +29,9 @@ func buildFxOptions() fx.Option {
 			fx.Annotate(store.NewStore, fx.As(new(dependencies.IStore))),
 
 			server.NewServer,
+
+			matcher.NewMatcher,
 		),
-		fx.Invoke(startServer),
+		fx.Invoke(startServer, startMatcher),
 	)
 }

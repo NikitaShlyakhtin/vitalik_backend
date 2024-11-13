@@ -315,7 +315,7 @@ func (m *OrderBookManager) matchOrders(ctx context.Context, orderBook *order_boo
 				ToAddress:   buyOrder.BuyRequisites.Address,
 				Amount:      sellQuantity,
 				Currency:    sellOrder.SellCurrency,
-				Purpose:     null.StringFrom("Trade"),
+				Purpose:     null.StringFrom(fmt.Sprintf("Initiating %v to %v trade", sellOrder.SellCurrency, sellOrder.BuyCurrency)),
 			}
 
 			_, err := m.store.Transfer(ctx, transferArgs)
@@ -330,7 +330,7 @@ func (m *OrderBookManager) matchOrders(ctx context.Context, orderBook *order_boo
 				ToAddress:   sellOrder.BuyRequisites.Address,
 				Amount:      buyQuantity,
 				Currency:    sellOrder.BuyCurrency,
-				Purpose:     null.StringFrom("Trade"),
+				Purpose:     null.StringFrom(fmt.Sprintf("Initiating %v to %v trade", sellOrder.BuyCurrency, sellOrder.SellCurrency)),
 			}
 
 			_, err = m.store.Transfer(ctx, transferArgs)
