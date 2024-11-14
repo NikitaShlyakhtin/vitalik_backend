@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/samber/lo"
 	"time"
+	"vitalik_backend/.gen/vitalik/public/table"
 	"vitalik_backend/internal/dependencies"
 	store_types "vitalik_backend/internal/pkg/services/store/types"
 	"vitalik_backend/internal/pkg/types"
@@ -18,23 +22,35 @@ var (
 )
 
 type Store struct {
-	wallets      map[string]*types.Wallet
-	transactions []*types.Transaction
-	orders       []*types.Order
+	db *pgxpool.Pool
 }
 
-func NewStore() *Store {
+func NewStore(db *pgxpool.Pool) *Store {
 	return &Store{
-		wallets: make(map[string]*types.Wallet),
+		db: db,
 	}
 }
 
 var _ dependencies.IStore = (*Store)(nil)
 
 func (s *Store) CreateWallet(ctx context.Context, wallet types.Wallet) error {
-	s.wallets[wallet.Requisites.Address] = &wallet
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("db.Begin failed: %w", err)
+	}
+	defer tx.Rollback(ctx)
 
-	tx := &types.Transaction{
+	sql, args := table.Wallets.
+		INSERT(table.Wallets.AllColumns).
+		MODEL(store_types.MapToWalletStore(&wallet)).
+		Sql()
+
+	_, err = tx.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("tx.Exec failed: %w", err)
+	}
+
+	transaction := types.Transaction{
 		ID: uuid.NewString(),
 		ReceiverRequisites: types.Requisites{
 			Address: wallet.Requisites.Address,
@@ -47,51 +63,98 @@ func (s *Store) CreateWallet(ctx context.Context, wallet types.Wallet) error {
 		UpdatedAt: time.Now(),
 	}
 
-	s.transactions = append(s.transactions, tx)
+	sql, args = table.Transactions.
+		INSERT(table.Transactions.AllColumns).
+		MODEL(store_types.MapToTransactionStore(&transaction)).
+		Sql()
 
-	return nil
+	_, err = tx.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("tx.Exec failed: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (s *Store) ListWallets(ctx context.Context, args store_types.ListWalletsArgs) ([]*types.Wallet, error) {
-	return lo.Filter(lo.Values(s.wallets), func(wallet *types.Wallet, _ int) bool {
-		Address := wallet.Requisites.Address
-		userID := wallet.Requisites.UserID
+	predicates := make([]postgres.BoolExpression, 0)
 
-		if len(args.UserIDsIn) > 0 && !lo.Contains(args.UserIDsIn, userID) {
-			return false
-		}
+	if len(args.UserIDsIn) > 0 {
+		predicates = append(predicates, table.Wallets.UserID.IN(
+			lo.Map(args.UserIDsIn, func(userID string, _ int) postgres.Expression {
+				return postgres.String(userID)
+			})...,
+		))
+	}
+	if len(args.AddresssIn) > 0 {
+		predicates = append(predicates, table.Wallets.Address.IN(
+			lo.Map(args.AddresssIn, func(address string, _ int) postgres.Expression {
+				return postgres.String(address)
+			})...,
+		))
+	}
 
-		if len(args.AddresssIn) > 0 && !lo.Contains(args.AddresssIn, Address) {
-			return false
-		}
+	query := table.Wallets.
+		SELECT(table.Wallets.AllColumns)
 
-		return true
+	if len(predicates) > 0 {
+		query = query.
+			WHERE(postgres.AND(predicates...))
+	}
+
+	sql, queryArgs := query.Sql()
+
+	wallets := []store_types.Wallet{}
+	if err := pgxscan.Select(ctx, s.db, &wallets, sql, queryArgs...); err != nil {
+		return nil, fmt.Errorf("pgxscan.ScanAll failed: %w", err)
+	}
+
+	return lo.Map(wallets, func(wallet store_types.Wallet, _ int) *types.Wallet {
+		return store_types.MapToWallet(wallet)
 	}), nil
 }
 
 func (s *Store) Deposit(ctx context.Context, args store_types.DepositArgs) (*types.Transaction, error) {
-	wallet, ok := s.wallets[args.Address]
-	if !ok {
-		return nil, ErrNotFound
-	} else if wallet.Currency != args.Currency {
-		return nil, fmt.Errorf(
-			"currency mismatch for wallet: %v, want %s, got %s",
-			wallet.Requisites.Address,
-			wallet.Currency,
-			args.Currency,
-		)
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("db.Begin failed: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	sql, queryArgs := table.Wallets.
+		UPDATE(table.Wallets.Balance, table.Wallets.UpdatedAt).
+		SET(
+			table.Wallets.Balance.ADD(postgres.Float(args.Amount)),
+			postgres.TimestampzT(args.UpdatedAt),
+		).
+		WHERE(table.Wallets.Address.EQ(postgres.String(args.Address))).
+		RETURNING(table.Wallets.AllColumns).
+		Sql()
+
+	fmt.Println(sql, args)
+
+	rows, err := s.db.Query(ctx, sql, queryArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("s.db.Query failed: %w", err)
+	}
+	defer rows.Close()
+
+	wallets := []store_types.Wallet{}
+	if err = pgxscan.ScanAll(&wallets, rows); err != nil {
+		return nil, fmt.Errorf("pgxscan.ScanAll failed: %w", err)
 	}
 
-	wallet.Balance += args.Amount
-	wallet.UpdatedAt = time.Now()
+	if len(wallets) == 0 {
+		return nil, ErrNotFound
+	}
 
-	s.wallets[args.Address] = wallet
+	wallet := wallets[0]
 
-	tx := &types.Transaction{
+	transaction := &types.Transaction{
 		ID: uuid.NewString(),
 		ReceiverRequisites: types.Requisites{
-			Address: wallet.Requisites.Address,
-			UserID:  wallet.Requisites.UserID,
+			Address: args.Address,
+			UserID:  wallet.UserID,
 		},
 		Amount:    args.Amount,
 		Currency:  args.Currency,
@@ -100,74 +163,161 @@ func (s *Store) Deposit(ctx context.Context, args store_types.DepositArgs) (*typ
 		UpdatedAt: time.Now(),
 	}
 
-	s.transactions = append(s.transactions, tx)
+	sql, queryArgs = table.Transactions.
+		INSERT(table.Transactions.AllColumns).
+		MODEL(store_types.MapToTransactionStore(transaction)).
+		Sql()
 
-	return tx, nil
+	_, err = tx.Exec(ctx, sql, queryArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("tx.Exec failed: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("tx.Commit failed: %w", err)
+	}
+
+	return transaction, nil
 }
 
 func (s *Store) ListTransactions(ctx context.Context, args store_types.ListTransactionsArgs) ([]*types.Transaction, error) {
-	return lo.Filter(s.transactions, func(tx *types.Transaction, _ int) bool {
-		senderAddress := tx.SenderRequisites.Address
-		senderUserID := tx.SenderRequisites.UserID
+	predicates := make([]postgres.BoolExpression, 0)
 
-		receiverAddress := tx.ReceiverRequisites.Address
-		receiverUserID := tx.ReceiverRequisites.UserID
+	if len(args.AddresssIn) > 0 {
+		predicates = append(predicates,
+			postgres.OR(
+				table.Transactions.SenderAddress.IN(
+					lo.Map(args.AddresssIn, func(address string, _ int) postgres.Expression {
+						return postgres.String(address)
+					})...,
+				),
+				table.Transactions.ReceiverAddress.IN(
+					lo.Map(args.AddresssIn, func(address string, _ int) postgres.Expression {
+						return postgres.String(address)
+					})...,
+				),
+			),
+		)
+	}
 
-		return lo.Contains(args.AddresssIn, senderAddress) ||
-			lo.Contains(args.AddresssIn, receiverAddress) ||
-			lo.Contains(args.UserIDsIn, senderUserID) ||
-			lo.Contains(args.UserIDsIn, receiverUserID)
+	if len(args.UserIDsIn) > 0 {
+		predicates = append(predicates,
+			postgres.OR(
+				table.Transactions.SenderUserID.IN(
+					lo.Map(args.UserIDsIn, func(userID string, _ int) postgres.Expression {
+						return postgres.String(userID)
+					})...,
+				),
+				table.Transactions.ReceiverUserID.IN(
+					lo.Map(args.UserIDsIn, func(userID string, _ int) postgres.Expression {
+						return postgres.String(userID)
+					})...,
+				),
+			),
+		)
+	}
+
+	query := table.Transactions.
+		SELECT(table.Transactions.AllColumns)
+
+	if len(predicates) > 0 {
+		query = query.
+			WHERE(postgres.AND(predicates...))
+	}
+
+	sql, queryArgs := query.Sql()
+
+	transactions := []store_types.Transaction{}
+	if err := pgxscan.Select(ctx, s.db, &transactions, sql, queryArgs...); err != nil {
+		return nil, fmt.Errorf("pgxscan.ScanAll failed: %w", err)
+	}
+
+	return lo.Map(transactions, func(transaction store_types.Transaction, _ int) *types.Transaction {
+		return store_types.MapToTransaction(&transaction)
 	}), nil
 }
 
 func (s *Store) Transfer(ctx context.Context, args store_types.TransferArgs) (*types.Transaction, error) {
-	from, ok := s.wallets[args.FromAddress]
-	if !ok {
-		return nil,
-			fmt.Errorf("from wallet does not exist: %w", ErrNotFound)
-	} else if from.Balance < args.Amount {
-		return nil,
-			fmt.Errorf("insufficient funds for wallet %v: %d < %d", from.Requisites.Address, from.Balance, args.Amount)
-	} else if from.Currency != args.Currency {
-		return nil, fmt.Errorf(
-			"currency mismatch for sender wallet: %v, want %s, got %s",
-			from.Requisites.Address,
-			from.Currency,
-			args.Currency,
-		)
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("db.Begin failed: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	sql, queryArgs := table.Wallets.
+		UPDATE(table.Wallets.Balance, table.Wallets.UpdatedAt).
+		SET(
+			table.Wallets.Balance.SUB(postgres.Float(args.Amount)),
+			postgres.TimestampzT(time.Now()),
+		).
+		WHERE(
+			postgres.AND(
+				table.Wallets.Address.EQ(postgres.String(args.FromAddress)),
+				table.Wallets.Balance.GT_EQ(postgres.Float(args.Amount)),
+				table.Wallets.Currency.EQ(postgres.String(string(args.Currency))),
+			),
+		).
+		RETURNING(table.Wallets.AllColumns).
+		Sql()
+
+	rows, err := s.db.Query(ctx, sql, queryArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("s.db.Query failed: %w", err)
+	}
+	defer rows.Close()
+
+	wallets := []store_types.Wallet{}
+	if err = pgxscan.ScanAll(&wallets, rows); err != nil {
+		return nil, fmt.Errorf("pgxscan.ScanAll failed: %w", err)
 	}
 
-	to, ok := s.wallets[args.ToAddress]
-	if !ok {
-		return nil,
-			fmt.Errorf("to wallet does not exist: %w", ErrNotFound)
-	} else if to.Currency != args.Currency {
-		return nil, fmt.Errorf(
-			"currency mismatch for receiver wallet: %v, want %s, got %s",
-			to.Requisites.Address,
-			to.Currency,
-			args.Currency,
-		)
+	if len(wallets) == 0 {
+		return nil, ErrNotFound
 	}
 
-	from.Balance -= args.Amount
-	from.UpdatedAt = time.Now()
+	senderWallet := wallets[0]
 
-	to.Balance += args.Amount
-	to.UpdatedAt = time.Now()
+	sql, queryArgs = table.Wallets.
+		UPDATE(table.Wallets.Balance, table.Wallets.UpdatedAt).
+		SET(
+			table.Wallets.Balance.ADD(postgres.Float(args.Amount)),
+			postgres.TimestampzT(time.Now()),
+		).
+		WHERE(
+			postgres.AND(
+				table.Wallets.Address.EQ(postgres.String(args.ToAddress)),
+				table.Wallets.Currency.EQ(postgres.String(string(args.Currency))),
+			),
+		).
+		RETURNING(table.Wallets.AllColumns).
+		Sql()
 
-	s.wallets[args.FromAddress] = from
-	s.wallets[args.ToAddress] = to
+	rows, err = s.db.Query(ctx, sql, queryArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("s.db.Query failed: %w", err)
+	}
+	defer rows.Close()
 
-	tx := &types.Transaction{
+	wallets = []store_types.Wallet{}
+	if err = pgxscan.ScanAll(&wallets, rows); err != nil {
+		return nil, fmt.Errorf("pgxscan.ScanAll failed: %w", err)
+	}
+
+	if len(wallets) == 0 {
+		return nil, ErrNotFound
+	}
+
+	receiverWallet := wallets[0]
+
+	transaction := &types.Transaction{
 		ID: uuid.NewString(),
-		ReceiverRequisites: types.Requisites{
-			Address: from.Requisites.Address,
-			UserID:  from.Requisites.UserID,
-		},
 		SenderRequisites: types.Requisites{
-			Address: to.Requisites.Address,
-			UserID:  to.Requisites.UserID,
+			Address: senderWallet.Address,
+			UserID:  senderWallet.UserID,
+		},
+		ReceiverRequisites: types.Requisites{
+			Address: receiverWallet.Address,
+			UserID:  receiverWallet.UserID,
 		},
 		Amount:    args.Amount,
 		Currency:  args.Currency,
@@ -176,13 +326,31 @@ func (s *Store) Transfer(ctx context.Context, args store_types.TransferArgs) (*t
 		UpdatedAt: time.Now(),
 	}
 
-	s.transactions = append(s.transactions, tx)
+	sql, queryArgs = table.Transactions.
+		INSERT(table.Transactions.AllColumns).
+		MODEL(store_types.MapToTransactionStore(transaction)).
+		Sql()
 
-	return tx, nil
+	if _, err := tx.Exec(ctx, sql, queryArgs...); err != nil {
+		return nil, fmt.Errorf("tx.Exec failed: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("tx.Commit failed: %w", err)
+	}
+
+	return transaction, nil
 }
 
 func (s *Store) SaveOrder(ctx context.Context, order types.Order) error {
-	s.orders = append(s.orders, &order)
+	sql, queryArgs := table.Orders.
+		INSERT(table.Orders.AllColumns).
+		MODEL(store_types.MapToOrderStore(&order)).
+		Sql()
+
+	if _, err := s.db.Exec(ctx, sql, queryArgs...); err != nil {
+		return fmt.Errorf("s.db.Exec failed: %w", err)
+	}
 
 	return nil
 }

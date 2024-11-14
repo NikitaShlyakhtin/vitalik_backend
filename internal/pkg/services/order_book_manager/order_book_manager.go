@@ -164,7 +164,7 @@ func (m *OrderBookManager) getOrderWallets(ctx context.Context, order *types.Ord
 
 	wallets, err := m.store.ListWallets(ctx, listWalletsArgs)
 	if err != nil {
-		return nil, fmt.Errorf("store.ListWallets failed: %w", err)
+		return nil, fmt.Errorf("storefx.ListWallets failed: %w", err)
 	}
 
 	return wallets, nil
@@ -320,7 +320,7 @@ func (m *OrderBookManager) matchOrders(ctx context.Context, orderBook *order_boo
 
 			_, err := m.store.Transfer(ctx, transferArgs)
 			if err != nil {
-				return fmt.Errorf("store.Transfer failed: %w", err)
+				return fmt.Errorf("storefx.Transfer failed: %w", err)
 			}
 
 			buyQuantity := sellQuantity * sellOrder.Price
@@ -335,7 +335,7 @@ func (m *OrderBookManager) matchOrders(ctx context.Context, orderBook *order_boo
 
 			_, err = m.store.Transfer(ctx, transferArgs)
 			if err != nil {
-				return fmt.Errorf("store.Transfer failed: %w", err)
+				return fmt.Errorf("storefx.Transfer failed: %w", err)
 			}
 
 			buyOrder.BuyQuantity = null.FloatFrom(buyOrder.BuyQuantity.ValueOrZero() - sellQuantity)
@@ -344,13 +344,13 @@ func (m *OrderBookManager) matchOrders(ctx context.Context, orderBook *order_boo
 			if buyOrder.BuyQuantity.ValueOrZero() <= 0 {
 				buyOrder.Status = types.OrderClosed
 				if err = m.store.SaveOrder(ctx, buyOrder); err != nil {
-					return fmt.Errorf("store.SaveOrder failed: %w", err)
+					return fmt.Errorf("storefx.SaveOrder failed: %w", err)
 				}
 			}
 			if sellOrder.SellQuantity.ValueOrZero() <= 0 {
 				sellOrder.Status = types.OrderClosed
 				if err = m.store.SaveOrder(ctx, sellOrder); err != nil {
-					return fmt.Errorf("store.SaveOrder failed: %w", err)
+					return fmt.Errorf("storefx.SaveOrder failed: %w", err)
 				}
 			}
 

@@ -16,7 +16,7 @@ func requestLogger(logger *zap.SugaredLogger) echo.MiddlewareFunc {
 		LogError:     true,
 		HandleError:  true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			if v.Error == nil {
+			if v.Status >= 200 && v.Status < 300 {
 				logger.Infow("REQUEST",
 					"method", v.Method,
 					"uri", v.URI,

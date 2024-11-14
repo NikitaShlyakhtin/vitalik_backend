@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"regexp"
+	"time"
 	store_types "vitalik_backend/internal/pkg/services/store/types"
 	"vitalik_backend/internal/pkg/types"
 )
@@ -68,8 +69,9 @@ func (app *Application) validateDepositRequest(ctx context.Context, req *deposit
 
 func bindDepositArgs(req *depositRequest) store_types.DepositArgs {
 	return store_types.DepositArgs{
-		Address:  req.Address,
-		Currency: req.Currency,
-		Amount:   req.Amount,
+		Address:   req.Address,
+		Currency:  req.Currency,
+		Amount:    req.Amount,
+		UpdatedAt: time.Now(),
 	}
 }

@@ -2,6 +2,7 @@ package store_types
 
 import (
 	"github.com/guregu/null/v5"
+	"time"
 	"vitalik_backend/internal/pkg/types"
 )
 
@@ -11,9 +12,10 @@ type ListWalletsArgs struct {
 }
 
 type DepositArgs struct {
-	Address  string
-	Currency types.Currency
-	Amount   float64
+	Address   string
+	Currency  types.Currency
+	Amount    float64
+	UpdatedAt time.Time
 }
 
 type ListTransactionsArgs struct {

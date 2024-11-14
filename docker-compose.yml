@@ -1,0 +1,20 @@
+version: '3.7'
+services:
+  db:
+    image: postgres:latest
+    container_name: vitalik-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vitalik
+    ports:
+      - "5452:5432"
+    volumes:
+      - vitalik-db-data:/var/lib/postgresql/data
+    networks:
+      - vitalik-network
+networks:
+  vitalik-network:
+    driver: bridge
+volumes:
+  vitalik-db-data:

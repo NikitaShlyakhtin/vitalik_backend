@@ -1,45 +1,43 @@
-# Simple Makefile for a Go project
-
-# Build the application
-all: build test
+PG_DSN := "postgres://postgres:password@localhost:5452/vitalik?sslmode=disable"
 
 .PHONY: build
 build:
 	@echo 'Building cmd/api...'
-
 	go build -o=./bin/vitalik ./cmd/vitalik
-
 	GOOS=linux GOARCH=amd64 go build -o=./bin/linux_amd64/vitalik ./cmd/vitalik
 
 .PHONY: run
 run:
 	@go run ./cmd/vitalik
 
-# Test the application
-test:
-	@echo "Testing..."
-	@go test ./... -v
+.PHONY: db-start
+db-start:
+	@echo 'Starting PostgreSQL database container using docker-compose...'
+	docker-compose up -d db
 
-# Clean the binary
-clean:
-	@echo "Cleaning..."
-	@rm -f main
+.PHONY: db-stop
+db-stop:
+	@echo 'Stopping PostgreSQL database container...'
+	docker-compose down
 
-# Live Reload
-watch:
-	@if command -v air > /dev/null; then \
-            air; \
-            echo "Watching...";\
-        else \
-            read -p "Go's 'air' is not installed on your machine. Do you want to install it? [Y/n] " choice; \
-            if [ "$$choice" != "n" ] && [ "$$choice" != "N" ]; then \
-                go install github.com/air-verse/air@latest; \
-                air; \
-                echo "Watching...";\
-            else \
-                echo "You chose not to install air. Exiting..."; \
-                exit 1; \
-            fi; \
-        fi
+.PHONY: db-reset
+db-reset: db-stop db-cleanup db-start wait-pg-up db-up
 
-.PHONY: all build run test clean watch
+.PHONY: wait-pg-up
+wait-pg-up:
+	sleep 3
+
+.PHONY: db-up
+db-up:
+	@echo 'Running database migrations...'
+	goose -dir db/migrations postgres "$(PG_DSN)" up
+
+.PHONY: db-cleanup
+db-cleanup:
+	@echo 'Cleaning up unused Docker volumes...'
+	docker volume rm vitalik_backend_vitalik-db-data
+
+.PHONE: db-jet
+db-jet:
+	@echo 'Generating go-jet code...'
+	jet -source=postgres -host=localhost -port=5452 -user=postgres -password=password -dbname=vitalik -path=./.gen
