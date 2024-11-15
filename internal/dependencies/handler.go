@@ -4,6 +4,8 @@ import "github.com/labstack/echo/v4"
 
 // IHandler defines the methods for HTTP handlers
 type IHandler interface {
+	Register() echo.HandlerFunc
+	Login() echo.HandlerFunc
 	HealthCheck() echo.HandlerFunc
 
 	CreateWallet() echo.HandlerFunc

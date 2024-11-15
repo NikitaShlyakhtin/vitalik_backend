@@ -2,6 +2,7 @@ package order_book_manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
@@ -23,12 +24,18 @@ type OrderBookManager struct {
 	orderBooks map[string]*order_book.OrderBook
 }
 
-func NewOrderBookManager(store dependencies.IStore) *OrderBookManager {
+func NewOrderBookManager(store dependencies.IStore) (*OrderBookManager, error) {
+	if store == nil {
+		return nil, errors.New("failed to initialize order_book_manager")
+	}
+
 	return &OrderBookManager{
 		store:      store,
 		orderBooks: make(map[string]*order_book.OrderBook),
-	}
+	}, nil
 }
+
+var _ dependencies.IOrderBookManager = (*OrderBookManager)(nil)
 
 func (m *OrderBookManager) ListAvailableCurrencyPairs(ctx context.Context) ([]types.CurrencyPair, error) {
 	pairs := lo.Map(lo.Values(m.orderBooks), func(book *order_book.OrderBook, _ int) types.CurrencyPair {

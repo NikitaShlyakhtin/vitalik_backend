@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("not found")
+	ErrNotFound      = errors.New("not found")
+	ErrAlreadyExists = errors.New("already exists")
 )
 
 type Store struct {
@@ -357,4 +358,36 @@ func (s *Store) SaveOrder(ctx context.Context, order types.Order) error {
 	}
 
 	return nil
+}
+
+func (s *Store) SaveUser(ctx context.Context, user types.User) error {
+	sql, queryArgs := table.Users.
+		INSERT(table.Users.AllColumns).
+		MODEL(store_types.MapToUserStore(&user)).
+		Sql()
+
+	if _, err := s.db.Exec(ctx, sql, queryArgs...); err != nil {
+		return fmt.Errorf("s.db.Exec failed: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) GetUser(ctx context.Context, userID string) (*types.User, error) {
+
+	sql, queryArgs := table.Users.
+		SELECT(table.Users.AllColumns).
+		WHERE(table.Users.UserID.EQ(postgres.String(userID))).
+		Sql()
+
+	users := []store_types.User{}
+	if err := pgxscan.Select(ctx, s.db, &users, sql, queryArgs...); err != nil {
+		return nil, fmt.Errorf("pgxscan.ScanAll failed: %w", err)
+	}
+
+	if len(users) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return store_types.MapFromUserStore(&users[0]), nil
 }

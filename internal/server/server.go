@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
@@ -12,12 +13,20 @@ type Server struct {
 	logger  *zap.SugaredLogger
 	echo    *echo.Echo
 	handler dependencies.IHandler
+	auth    dependencies.IAuthService
 }
 
 func NewServer(
 	logger *zap.Logger,
 	handler dependencies.IHandler,
-) *Server {
+	auth dependencies.IAuthService,
+) (*Server, error) {
+	if logger == nil ||
+		handler == nil ||
+		auth == nil {
+		return nil, errors.New("failed to initialize server")
+	}
+
 	e := echo.New()
 
 	e.HideBanner = true
@@ -27,12 +36,13 @@ func NewServer(
 		logger:  logger.Sugar(),
 		echo:    e,
 		handler: handler,
+		auth:    auth,
 	}
 
 	s.setupMiddleware()
 	s.setupRoutes()
 
-	return s
+	return s, nil
 }
 
 func (s *Server) Start(address string) error {
@@ -60,19 +70,22 @@ func (s *Server) setupMiddleware() {
 
 func (s *Server) setupRoutes() {
 	s.echo.GET("/healthCheck", s.handler.HealthCheck())
+	s.echo.POST("/register", s.handler.Register())
+	s.echo.POST("/login", s.handler.Login())
 
-	s.echo.POST("/wallets/create", s.handler.CreateWallet())
-	s.echo.POST("/wallets", s.handler.ListWallets())
-	s.echo.PUT("/wallets/deposit", s.handler.Deposit())
+	authGroup := s.echo.Group("/auth")
+	authGroup.Use(s.authMiddleware)
 
-	s.echo.POST("/transfer", s.handler.Transfer())
+	authGroup.POST("/wallets/create", s.handler.CreateWallet())
+	authGroup.POST("/wallets", s.handler.ListWallets())
+	authGroup.PUT("/wallets/deposit", s.handler.Deposit())
 
-	s.echo.POST("/transactions", s.handler.ListTransactions())
+	authGroup.POST("/transfer", s.handler.Transfer())
+	authGroup.POST("/transactions", s.handler.ListTransactions())
+	authGroup.POST("/orders/create", s.handler.CreateOrder())
+	authGroup.DELETE("/orders", s.handler.CancelOrder())
+	authGroup.POST("/orders", s.handler.ListOrders())
+	authGroup.POST("/orders/match", s.handler.MatchOrders())
 
-	s.echo.POST("/orders/create", s.handler.CreateOrder())
-	s.echo.DELETE("/orders", s.handler.CancelOrder())
-	s.echo.POST("/orders", s.handler.ListOrders())
-	s.echo.POST("/orders/match", s.handler.MatchOrders())
-
-	s.echo.GET("/currencies", s.handler.ListAvailableCurrencies())
+	authGroup.GET("/currencies", s.handler.ListAvailableCurrencies())
 }

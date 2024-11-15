@@ -12,6 +12,7 @@ type Application struct {
 	WalletService    dependencies.IWalletService
 	OrderBookManager dependencies.IOrderBookManager
 	Store            dependencies.IStore
+	AuthService      dependencies.IAuthService
 }
 
 // NewApplication initializes a new Application instance
@@ -20,11 +21,13 @@ func NewApplication(
 	walletService dependencies.IWalletService,
 	orderBookManager dependencies.IOrderBookManager,
 	store dependencies.IStore,
+	authService dependencies.IAuthService,
 ) (*Application, error) {
 	if logger == nil ||
 		walletService == nil ||
 		orderBookManager == nil ||
-		store == nil {
+		store == nil ||
+		authService == nil {
 		return nil, errors.New("failed to initialize application")
 	}
 
@@ -33,6 +36,7 @@ func NewApplication(
 		WalletService:    walletService,
 		OrderBookManager: orderBookManager,
 		Store:            store,
+		AuthService:      authService,
 	}, nil
 }
 

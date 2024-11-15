@@ -13,5 +13,6 @@ func UseSchema(schema string) {
 	GooseDbVersion = GooseDbVersion.FromSchema(schema)
 	Orders = Orders.FromSchema(schema)
 	Transactions = Transactions.FromSchema(schema)
+	Users = Users.FromSchema(schema)
 	Wallets = Wallets.FromSchema(schema)
 }
