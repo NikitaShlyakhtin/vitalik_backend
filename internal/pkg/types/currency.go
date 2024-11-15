@@ -10,6 +10,8 @@ const (
 	ETH  Currency = "ETH"
 )
 
+var availableCurrencies = []Currency{BTC, USDT, ETH}
+
 func (c *Currency) String() string {
 	return string(*c)
 }
@@ -59,4 +61,8 @@ func (p *CurrencyPair) Validate() bool {
 	}
 
 	return p.Currency1.Validate() && p.Currency2.Validate()
+}
+
+func ListAvailableCurrencies() []Currency {
+	return availableCurrencies
 }

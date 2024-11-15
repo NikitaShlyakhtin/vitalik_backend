@@ -73,4 +73,6 @@ func (s *Server) setupRoutes() {
 	s.echo.DELETE("/orders", s.handler.CancelOrder())
 	s.echo.POST("/orders", s.handler.ListOrders())
 	s.echo.POST("/orders/match", s.handler.MatchOrders())
+
+	s.echo.GET("/currencies", s.handler.ListAvailableCurrencies())
 }

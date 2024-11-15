@@ -15,4 +15,5 @@ type IHandler interface {
 	CancelOrder() echo.HandlerFunc
 	ListOrders() echo.HandlerFunc
 	MatchOrders() echo.HandlerFunc
+	ListAvailableCurrencies() echo.HandlerFunc
 }

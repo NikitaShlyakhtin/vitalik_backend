@@ -7,7 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"regexp"
-	"sort"
 	"vitalik_backend/internal/pkg/services/store"
 	store_types "vitalik_backend/internal/pkg/services/store/types"
 )
@@ -47,10 +46,6 @@ func (app *Application) ListWallets() echo.HandlerFunc {
 				"message": fmt.Sprintf("Store ListWallets failed: %v", err),
 			})
 		}
-
-		sort.Slice(wallets, func(i, j int) bool {
-			return wallets[i].UpdatedAt.After(wallets[j].UpdatedAt)
-		})
 
 		return c.JSON(http.StatusOK, wallets)
 	}

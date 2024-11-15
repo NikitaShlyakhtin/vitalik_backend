@@ -102,6 +102,8 @@ func (s *Store) ListWallets(ctx context.Context, args store_types.ListWalletsArg
 			WHERE(postgres.AND(predicates...))
 	}
 
+	query = query.ORDER_BY(table.Wallets.Balance.DESC())
+
 	sql, queryArgs := query.Sql()
 
 	wallets := []store_types.Wallet{}
@@ -224,6 +226,8 @@ func (s *Store) ListTransactions(ctx context.Context, args store_types.ListTrans
 		query = query.
 			WHERE(postgres.AND(predicates...))
 	}
+
+	query = query.ORDER_BY(table.Transactions.CreatedAt.DESC())
 
 	sql, queryArgs := query.Sql()
 

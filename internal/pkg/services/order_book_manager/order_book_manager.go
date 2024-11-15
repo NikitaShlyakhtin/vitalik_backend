@@ -93,13 +93,17 @@ func (m *OrderBookManager) CancelOrder(
 }
 
 func (m *OrderBookManager) ListOrders(ctx context.Context, args order_book_types.ListOrdersArgs) ([]*types.Order, error) {
-	orderBook, err := m.getOrderBook(ctx, args.CurrencyPair)
+	orderBook, err := m.getOrCreateOrderBook(ctx, args.CurrencyPair)
 	if err != nil {
 		return nil, fmt.Errorf("getOrderBook failed: %w", err)
 	}
 
 	allOrders := append([]*types.Order{}, orderBook.SellOrders...)
 	allOrders = append(allOrders, orderBook.BuyOrders...)
+
+	sort.Slice(allOrders, func(i, j int) bool {
+		return allOrders[i].UpdatedAt.Before(allOrders[j].UpdatedAt)
+	})
 
 	return lo.Filter(allOrders, func(order *types.Order, _ int) bool {
 		if len(args.UserIDIn) > 0 &&

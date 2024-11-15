@@ -7,7 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"regexp"
-	"sort"
 	store_types "vitalik_backend/internal/pkg/services/store/types"
 )
 
@@ -39,10 +38,6 @@ func (app *Application) ListTransactions() echo.HandlerFunc {
 				"message": fmt.Sprintf("Store ListTransactions failed: %v", err),
 			})
 		}
-
-		sort.Slice(transactions, func(i, j int) bool {
-			return transactions[i].CreatedAt.After(transactions[j].CreatedAt)
-		})
 
 		return c.JSON(http.StatusOK, transactions)
 	}
