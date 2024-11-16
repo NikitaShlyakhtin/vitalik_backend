@@ -1,4 +1,4 @@
-PG_DSN := "postgres://postgres:password@localhost:5452/vitalik?sslmode=disable"
+PG_DSN := "postgresql://vitalik_owner:PB6QexV3duUl@ep-lively-credit-a2kw4odd.eu-central-1.aws.neon.tech/vitalik?sslmode=require"
 
 .PHONY: build
 build:

@@ -13,6 +13,24 @@ services:
       - vitalik-db-data:/var/lib/postgresql/data
     networks:
       - vitalik-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 1s
+      timeout: 5s
+      retries: 5
+
+  vitalik_backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - vitalik-network
+
 networks:
   vitalik-network:
     driver: bridge

@@ -161,7 +161,7 @@ func (s *Store) Deposit(ctx context.Context, args store_types.DepositArgs) (*typ
 		},
 		Amount:    args.Amount,
 		Currency:  args.Currency,
-		Purpose:   null.StringFrom("Deposit from external wallet"),
+		Purpose:   null.StringFrom("Deposit"),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}

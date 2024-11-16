@@ -8,7 +8,7 @@ import (
 )
 
 func newPgxPool() (*pgxpool.Pool, error) {
-	dsn := "postgres://postgres:password@localhost:5452/vitalik?sslmode=disable"
+	dsn := "postgresql://vitalik_owner:PB6QexV3duUl@ep-lively-credit-a2kw4odd.eu-central-1.aws.neon.tech/vitalik?sslmode=require"
 
 	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
