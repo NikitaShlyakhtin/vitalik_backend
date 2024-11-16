@@ -1,39 +1,20 @@
-# Project vitalik_backend
+# vitalik_backend
 
-One Paragraph of project description goes here
+## About
 
-## Getting Started
+This is a backend for CEX prototype, 
+build for Innopolis University F24 FTCS course. 
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+The backend is developed with Go programming language and provides 
+HTTP REST API for interaction with CEX: managing wallets, 
+making deposits and trading orders.
 
-## MakeFile
+## How to run
 
-Run build make command with tests
-```bash
-make all
+It's easy to run backend with PostgreSQL database with `docker-compose` CLI:
+
+```shell
+docker-compose up --build
 ```
 
-Build the application
-```bash
-make build
-```
-
-Run the application
-```bash
-make run
-```
-
-Live reload the application:
-```bash
-make watch
-```
-
-Run the test suite:
-```bash
-make test
-```
-
-Clean up binary from the last build:
-```bash
-make clean
-```
+Now, you are ready to make API requests. Use `localhost:8080` as a base URL.
