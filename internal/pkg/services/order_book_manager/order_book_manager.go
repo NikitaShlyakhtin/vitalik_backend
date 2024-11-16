@@ -108,10 +108,6 @@ func (m *OrderBookManager) ListOrders(ctx context.Context, args order_book_types
 	allOrders := append([]*types.Order{}, orderBook.SellOrders...)
 	allOrders = append(allOrders, orderBook.BuyOrders...)
 
-	sort.Slice(allOrders, func(i, j int) bool {
-		return allOrders[i].UpdatedAt.Before(allOrders[j].UpdatedAt)
-	})
-
 	return lo.Filter(allOrders, func(order *types.Order, _ int) bool {
 		if len(args.UserIDIn) > 0 &&
 			!lo.Contains(args.UserIDIn, order.SellRequisites.UserID) &&
@@ -326,7 +322,7 @@ func (m *OrderBookManager) matchOrders(ctx context.Context, orderBook *order_boo
 				ToAddress:   buyOrder.BuyRequisites.Address,
 				Amount:      sellQuantity,
 				Currency:    sellOrder.SellCurrency,
-				Purpose:     null.StringFrom(fmt.Sprintf("Initiating %v to %v trade", sellOrder.SellCurrency, sellOrder.BuyCurrency)),
+				Purpose:     null.StringFrom(fmt.Sprintf("Trading %v for %v", sellOrder.SellCurrency, sellOrder.BuyCurrency)),
 			}
 
 			_, err := m.store.Transfer(ctx, transferArgs)
@@ -341,7 +337,7 @@ func (m *OrderBookManager) matchOrders(ctx context.Context, orderBook *order_boo
 				ToAddress:   sellOrder.BuyRequisites.Address,
 				Amount:      buyQuantity,
 				Currency:    sellOrder.BuyCurrency,
-				Purpose:     null.StringFrom(fmt.Sprintf("Initiating %v to %v trade", sellOrder.BuyCurrency, sellOrder.SellCurrency)),
+				Purpose:     null.StringFrom(fmt.Sprintf("Trading %v for %v", sellOrder.SellCurrency, sellOrder.BuyCurrency)),
 			}
 
 			_, err = m.store.Transfer(ctx, transferArgs)

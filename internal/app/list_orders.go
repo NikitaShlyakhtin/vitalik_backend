@@ -6,7 +6,6 @@ import (
 	"github.com/guregu/null/v5"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"sort"
 	order_book_types "vitalik_backend/internal/pkg/services/order_book/types"
 	"vitalik_backend/internal/pkg/types"
 )
@@ -49,10 +48,6 @@ func (app *Application) ListOrders() echo.HandlerFunc {
 				},
 			)
 		}
-
-		sort.Slice(orders, func(i, j int) bool {
-			return orders[i].UpdatedAt.After(orders[j].UpdatedAt)
-		})
 
 		return c.JSON(http.StatusOK, orders)
 	}
